@@ -1,0 +1,13 @@
+package com.tourismgov.program.client;
+
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+
+import com.tourismgov.program.dto.AuditLogRequest;
+
+@FeignClient(name = "USER-SERVICE", fallback = UserClientFallback.class)
+public interface UserClient {
+    @PostMapping("/tourismgov/v1/audit-logs")
+    void logAction(@RequestBody AuditLogRequest request);
+}
