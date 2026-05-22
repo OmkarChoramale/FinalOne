@@ -20,12 +20,13 @@ const Dashboard = () => {
         const BASE_URL = 'http://localhost:8383/tourismgov/v1';
  
         // 1. Fetch data concurrently
-        const [sitesRes, programsRes, eventsRes, usersRes, bookingsPagedRes] = await Promise.all([
+        const [sitesRes, programsRes, eventsRes, usersRes, bookingsPagedRes, auditsRes] = await Promise.all([
             axios.get(`${BASE_URL}/sites`, axiosConfig).catch(() => ({ data: [] })),
             axios.get(`${BASE_URL}/programs`, axiosConfig).catch(() => ({ data: [] })),
             axios.get(`${BASE_URL}/events`, axiosConfig).catch(() => ({ data: [] })),
             axios.get(`${BASE_URL}/users`, axiosConfig).catch(() => ({ data: [] })),
-            axios.get(`${BASE_URL}/bookings/paged?size=1`, axiosConfig).catch(() => ({ data: { totalElements: 0 } }))
+            axios.get(`${BASE_URL}/bookings/paged?size=1`, axiosConfig).catch(() => ({ data: { totalElements: 0 } })),
+            axios.get(`${BASE_URL}/audits/official`, axiosConfig).catch(() => ({ data: [] }))
         ]);
  
         // 2. Safely calculate the counts
@@ -39,6 +40,11 @@ const Dashboard = () => {
  
         // Extract total elements from Spring Boot's Pageable response
         const totalBookings = bookingsPagedRes.data?.totalElements || 0;
+
+        // Count pending/planned audits from ComplianceService
+        const pendingAudits = Array.isArray(auditsRes.data)
+            ? auditsRes.data.filter(a => a.status === 'PLANNED' || a.status === 'IN_PROGRESS').length
+            : 0;
  
         // 3. Set the data so the dashboard renders properly
         setData({
@@ -49,7 +55,7 @@ const Dashboard = () => {
                 activePrograms: activeProgs,
                 upcomingEvents: totalEvents,
                 totalUsers: totalUsers,
-                pendingAudits: 0, // Update this if you have a specific Audit API later
+                pendingAudits: pendingAudits,
                 totalBookings: totalBookings
             }
         });
@@ -228,4 +234,3 @@ const ActionCard = ({ to, icon, title, desc, color }) => (
 );
  
 export default Dashboard;
- 
