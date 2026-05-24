@@ -1,61 +1,55 @@
-package com.tourismgov.compliance.security;
+package com.tourismgov.report.dto;
 
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import lombok.RequiredArgsConstructor;
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class TouristDTO {
+    private Long touristId;
+    private String name;
+    private String email;
+    private String contactInfo;
+    private String status;
+    private Long userId;
+}
+////////////////////
 
-@Configuration
-@EnableWebSecurity
-@RequiredArgsConstructor
-public class MicroserviceSecurityConfig {
 
-    private static final String ADMIN = "ADMIN";
-    private static final String AUDITOR = "AUDITOR";
-    private static final String COMPLIANCE = "COMPLIANCE";
-    
-    // Removed unused roles (OFFICER, MANAGER, TOURIST) since they are no longer referenced
+package com.tourismgov.report.client;
 
-    private final GatewayHeaderFilter gatewayHeaderFilter;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf(AbstractHttpConfigurer::disable)
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
+import com.tourismgov.report.dto.TouristDTO;
 
-                // ==========================================
-                // 0. INTERNAL FEIGN ENDPOINTS (service-to-service, no user headers)
-                // ==========================================
-                .requestMatchers(HttpMethod.GET, "/tourismgov/v1/compliance/records/all").permitAll()
-                .requestMatchers(HttpMethod.GET, "/tourismgov/v1/audits/official").permitAll()
-                
-                // ==========================================
-                // 1. AUDIT ENDPOINTS (/tourismgov/v1/audits)
-                // ==========================================
-                .requestMatchers(HttpMethod.POST, "/tourismgov/v1/audits/official").hasAnyRole(ADMIN, AUDITOR)
-                .requestMatchers(HttpMethod.GET, "/tourismgov/v1/audits/official/**").hasAnyRole(ADMIN, AUDITOR)
-                .requestMatchers(HttpMethod.PATCH, "/tourismgov/v1/audits/official/*").hasAnyRole(ADMIN, AUDITOR)
+@FeignClient(name = "TOURIST-SERVICE", fallback = TouristClientFallback.class)
+public interface TouristClient {
 
-                // ==========================================
-                // 2. COMPLIANCE ENDPOINTS (/tourismgov/v1/compliance/records)
-                // ==========================================
-                .requestMatchers(HttpMethod.POST, "/tourismgov/v1/compliance/records").hasAnyRole(ADMIN, AUDITOR, COMPLIANCE)
-                .requestMatchers(HttpMethod.GET, "/tourismgov/v1/compliance/records/**").hasAnyRole(ADMIN, AUDITOR, COMPLIANCE)
-                .requestMatchers(HttpMethod.PATCH, "/tourismgov/v1/compliance/records/*/result").hasAnyRole(ADMIN, AUDITOR, COMPLIANCE)
-                .requestMatchers(HttpMethod.DELETE, "/tourismgov/v1/compliance/records/*").hasAnyRole(ADMIN, AUDITOR, COMPLIANCE)
+    @GetMapping("/tourismgov/v1/tourist/profile")
+    TouristDTO getTouristProfile();
+}
+////////////////////////
 
-                .anyRequest().authenticated()
-            )
-            .addFilterBefore(gatewayHeaderFilter, UsernamePasswordAuthenticationFilter.class);
+package com.tourismgov.report.client;
 
-        return http.build();
+import org.springframework.stereotype.Component;
+import com.tourismgov.report.dto.TouristDTO;
+import lombok.extern.slf4j.Slf4j;
+
+@Component
+@Slf4j
+public class TouristClientFallback implements TouristClient {
+
+    @Override
+    public TouristDTO getTouristProfile() {
+        log.warn("FALLBACK: TOURIST-SERVICE unavailable. Returning null for tourist profile.");
+        return null;
     }
 }
+
+/////////////////////
